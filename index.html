@@ -222,6 +222,27 @@ svg .n { fill: none; }
 .counter .dot { width: 30px; height: 30px; border-radius: 50%; border: 3px dashed #8a8a92; box-sizing: border-box; }
 .counter .dot.on { border: 3px solid var(--ink); animation: pop .6s cubic-bezier(.3,1.6,.5,1); }
 
+/* ---------- Power cards ---------- */
+.cards { position: absolute; left: 40px; right: 40px; top: 120px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; z-index: 6; }
+.pcard {
+  background: #fff; border-radius: 28px; padding: 16px 16px 20px;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  box-shadow: 0 14px 40px rgba(0,0,0,.35);
+  animation: pop .5s cubic-bezier(.3,1.5,.5,1) both;
+}
+.pcard.keeper { background: #2b2552; box-shadow: 0 0 0 3px #B07BE0, 0 14px 40px rgba(176,123,224,.35); color: #fff; }
+.pcard .pname { font-family: var(--head); font-weight: 700; font-size: 28px; }
+.pcard .pwho { font-family: var(--head); font-weight: 600; font-size: 17px; color: #8a6fc0; margin-top: -6px; }
+.pcard.keeper .pwho { color: var(--lilac); }
+.pcard .ptext { font-size: 18px; line-height: 1.35; text-align: center; color: #4a4560; }
+.pcard.keeper .ptext { color: var(--lilac); }
+
+/* ---------- Power puzzles ---------- */
+@keyframes shimmer { 0%,100% { opacity: .05; } 50% { opacity: .22; } }
+.shimmer { animation: shimmer 2.4s ease-in-out infinite; }
+@keyframes drift { 0%,100% { transform: translateX(-24px); } 50% { transform: translateX(24px); } }
+.drift { animation: drift 7s ease-in-out infinite; }
+
 /* "Not here..." words that float up after tapping a sparkle */
 .float-text {
   position: absolute; z-index: 12; pointer-events: none; white-space: nowrap;
@@ -316,6 +337,61 @@ const STORY = {
     '{fairy0} and I have a big surprise for you. Come with us!',
   ],
   gardenNext: 'Follow the fairies &#9656;',
+
+  powersTitle: 'We Have Powers!',
+  powersLines: [
+    { who: 'fairy0', text: 'Sprinkle, sprinkle! Moon dust for our brave friends!' },
+    { who: 'fairy1', text: "Now each of you has a secret power. Let's see!" },
+  ],
+  // The 4 power cards, shown one at a time
+  powerCards: [
+    { who: 'girl1',  power: 'Teleport',     text: 'Poof! She can zip to another part of Fairy World in a flash.' },
+    { who: 'girl2',  power: 'Move Things',  text: 'She can lift rocks, leaves and logs to see who is hiding.' },
+    { who: 'girl3',  power: 'Spells',       text: 'She waves her star wand and says magic words to make hidden things appear.' },
+    { who: 'keeper', power: 'Power Keeper', text: 'She decides when the girls can use their powers. Tap her flower to wake them up!' },
+  ],
+  cardsHint: 'Tap to see the next power',
+  powersNext: "Let's find the other fairies! &#9656;",
+
+  // Used in all three power puzzles
+  flowerHint: "Tap {keeper}'s flower to wake up the powers!",
+  flowerFirst: 'Tap the flower first!',
+  powersAwake: 'Powers, wake up!',
+  pickHint: 'Who has the right power? Tap a princess!',
+  wrongPower: 'Hmm, try another power!',
+
+  rockyTitle: 'Rocky Hill',
+  rockyIntro: [
+    { who: 'fairy2', text: "Help! I'm stuck under this big rock!" },
+    { who: 'keeper', text: 'We need someone who can move heavy things...' },
+  ],
+  rockyDone: [
+    "I'm {fairy2}, the third Moonbow Fairy! Thank you, {girl2}!",
+    'My sister {fairy3} is at the Misty Pond. She is very hard to see!',
+  ],
+  rockyNext: 'To the Misty Pond &#9656;',
+
+  pondTitle: 'Misty Pond',
+  pondIntro: [
+    { who: 'fairy3', text: "I'm right here! But I'm invisible, so nobody can see me!" },
+    { who: 'keeper', text: 'We need a magic spell to make hidden things appear...' },
+  ],
+  pondDone: [
+    "I'm {fairy3}, the fourth Moonbow Fairy! Your spell worked, {girl3}!",
+    'The last fairy, {fairy4}, is far away on a cloud island in the sky.',
+  ],
+  pondNext: 'To the Cloud Island &#9656;',
+
+  cloudTitle: 'Floating Cloud Island',
+  cloudIntro: [
+    { who: 'fairy4', text: "Yoo-hoo! I'm way over here, on the cloud island!" },
+    { who: 'keeper', text: "It's much too far to walk. Who can zip there in a flash?" },
+  ],
+  cloudDone: [
+    "I'm {fairy4}, the fifth Moonbow Fairy! Thank you for coming to get me, {girl1}!",
+    'Now all five of us are home. Look up at the sky!',
+  ],
+  cloudNext: 'See the moonbow &#9656;',
 };
 
 /* The moonbow's 5 colors, outside to inside. One per fairy. */
@@ -426,6 +502,8 @@ const Sound = {
       case 'whoosh':  this.noise(0, 1.3, { from: 250, to: 3200, vol: 0.16 }); this.note(220, 0, 1.3, { to: 880, vol: 0.05 }); break;
       case 'cheer':   this.play('chime'); setTimeout(() => this.play('sparkle'), 380); break;
       case 'hmm':     this.note(392, 0, 0.2, { vol: 0.08 }); this.note(330, 0.2, 0.32, { vol: 0.08 }); break;
+      case 'poof':    this.noise(0, 0.35, { from: 3200, to: 500, vol: 0.13 }); this.note(880, 0, 0.25, { to: 1760, vol: 0.06 }); break;
+      case 'lift':    this.note(196, 0, 0.9, { type: 'triangle', to: 523, vol: 0.09 }); break;
     }
   },
 };
@@ -690,12 +768,27 @@ function drawFairy(i, { glow = true } = {}) {
   </g>`;
 }
 
+const DRAW = { girl1: drawGirl1, girl2: drawGirl2, girl3: drawGirl3, keeper: drawKeeper };
+
 // Put a character on the stage: x = middle of her body, groundY = where her shoes touch
 function place(name, opts, x, groundY, scale = 1) {
   const b = BODY[name];
-  const draw = { girl1: drawGirl1, girl2: drawGirl2, girl3: drawGirl3, keeper: drawKeeper }[name];
   const tx = x - b.cx * scale, ty = groundY - b.feetY * scale;
-  return `<g transform="translate(${tx.toFixed(1)},${ty.toFixed(1)}) scale(${scale})">${draw(opts || {})}</g>`;
+  return `<g transform="translate(${tx.toFixed(1)},${ty.toFixed(1)}) scale(${scale})">${DRAW[name](opts || {})}</g>`;
+}
+// Same, but she can be tapped and redrawn later with setPerson(). Her <g> gets id "pz-<name>".
+function placeTappable(name, opts, x, groundY, scale = 1) {
+  const b = BODY[name];
+  const tx = x - b.cx * scale, ty = groundY - b.feetY * scale;
+  return `<g transform="translate(${tx.toFixed(1)},${ty.toFixed(1)}) scale(${scale})"><g id="pz-${name}">${personInner(name, opts)}</g></g>`;
+}
+function personInner(name, opts) {
+  // an invisible box over her whole body makes her easy to tap
+  return DRAW[name](opts || {}) + `<rect x="0" y="-40" width="170" height="${BODY[name].feetY + 50}" fill="transparent"/>`;
+}
+function setPerson(root, name, opts) {
+  const g = $('#pz-' + name, root);
+  if (g) g.innerHTML = personInner(name, opts);
 }
 // Put a fairy on the stage, bobbing up and down. delay staggers the bobbing.
 function placeFairy(i, x, y, scale = 1, delay = 0) {
@@ -822,6 +915,32 @@ function confetti(count = 90) {
   }
 }
 
+// Glittery moon dust that drifts down from (x1..x2, y1) to about y2
+function moonDust(x1, x2, y1, y2, count = 60) {
+  const fx = $('#fx');
+  const colors = ['#fff6c9', '#E7CCF7', '#ffffff', '#F7C948', ...MOONBOW.slice(0, 2)];
+  for (let i = 0; i < count; i++) {
+    const d = el('div', '', fx);
+    const size = 5 + Math.random() * 8, color = colors[i % colors.length];
+    d.style.cssText = `position:absolute;left:${x1 + Math.random() * (x2 - x1)}px;top:${y1}px;width:${size}px;height:${size}px;border-radius:50%;background:${color};box-shadow:0 0 10px ${color};`;
+    d.animate([
+      { transform: 'translate(0,0)', opacity: 0 },
+      { opacity: 1, offset: 0.2 },
+      { transform: `translate(${(Math.random() - 0.5) * 80}px,${y2 - y1 + Math.random() * 60}px)`, opacity: 0 },
+    ], { duration: 1800 + Math.random() * 1200, delay: Math.random() * 900, easing: 'ease-in', fill: 'backwards' })
+      .onfinish = () => d.remove();
+  }
+}
+
+// A line of little sparkles from one spot to another (a wand's magic flying through the air)
+async function sparkleTrail([x1, y1], [x2, y2], steps = 7, ms = 600) {
+  for (let k = 0; k <= steps; k++) {
+    const t = k / steps;
+    sparkleAt(x1 + (x2 - x1) * t, y1 + (y2 - y1) * t - Math.sin(t * Math.PI) * 60, 5);
+    await wait(ms / steps);
+  }
+}
+
 function flash() {
   return $('#flash').animate([{ opacity: 0 }, { opacity: 1 }, { opacity: 0 }], { duration: 700, easing: 'ease-in-out' }).finished;
 }
@@ -837,12 +956,30 @@ function tint(i, color) {
   return `fill="${Save.data.found > i ? color : GRAY_TINT}" data-tint="${i}" data-color="${color}"`;
 }
 
-function fairySky(id, seed, top = '#3d3470', bottom = '#b9a3e3') {
+function fairySky(id, seed, top = '#3d3470', bottom = '#b9a3e3', hills = true) {
   return `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${top}"/><stop offset="1" stop-color="${bottom}"/></linearGradient></defs>
     <rect width="1280" height="720" fill="url(#${id})"/>
     ${starsSVG(30, seed, 300)}
     <circle cx="110" cy="170" r="34" fill="#f4efd9"/>
-    <path d="M0 430 Q200 370 400 420 T800 410 T1280 400 L1280 720 L0 720 Z" fill="#5a9e86"/>`;
+    ${hills ? '<path d="M0 430 Q200 370 400 420 T800 410 T1280 400 L1280 720 L0 720 Z" fill="#5a9e86"/>' : ''}`;
+}
+function pine(x, y, s = 1) {
+  return `<g transform="translate(${x},${y}) scale(${s})">
+    <rect class="s" x="-8" y="-30" width="16" height="30" fill="#7a5235"/>
+    <polygon class="s" points="0,-150 -52,-30 52,-30" fill="#2f8a5e"/>
+    <polygon class="s" points="0,-185 -38,-92 38,-92" fill="#3fa36f"/>
+  </g>`;
+}
+function cloud(x, y, s = 1, fill = '#f4f1ea') {
+  return `<g transform="translate(${x},${y}) scale(${s})"><path class="s" fill="${fill}" d="M-80 0 Q-90 -36 -50 -40 Q-40 -76 0 -70 Q36 -90 60 -50 Q96 -46 86 0 Z"/></g>`;
+}
+// A cluster of crystals; attrs is usually tint(...)
+function crystal(x, y, s, attrs) {
+  return `<g transform="translate(${x},${y}) scale(${s})">
+    <polygon class="s" style="stroke-width:3" ${attrs} points="-16,0 -20,-30 -8,-54 0,-30 4,0"/>
+    <polygon class="s" style="stroke-width:3" ${attrs} points="2,0 6,-42 16,-66 26,-38 22,0"/>
+    <path d="M-11 -36 L-7 -46 M12 -46 L16 -56" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+  </g>`;
 }
 const GROUND = '<path d="M0 540 Q320 500 640 528 T1280 520 L1280 720 L0 720 Z" fill="#3fa36f" stroke="#1d1838" stroke-width="4"/>';
 
@@ -1080,6 +1217,148 @@ function searchArea(root, cfg) {
 // The three girls standing together on the left of a Fairy World screen
 function girlsLeft(ground = 650, s = 0.55) {
   return place('girl1', {}, 110, ground, s) + place('girl2', {}, 195, ground, s) + place('girl3', {}, 280, ground, s);
+}
+
+// One power card for the "We Have Powers!" screen
+function powerCard(c) {
+  const art = {
+    girl1:  { bg: '#FFF4D1', s: 0.66 },
+    girl2:  { bg: '#DDF4FA', s: 0.62 },
+    girl3:  { bg: '#FDE6DA', s: 0.72 },
+    keeper: { bg: '#3d3470', s: 0.52 },
+  }[c.who];
+  return `<div class="pcard ${c.who === 'keeper' ? 'keeper' : ''}">
+    <svg width="200" height="240" viewBox="0 0 200 240" aria-hidden="true">
+      <circle cx="100" cy="128" r="96" fill="${art.bg}"/>
+      ${place(c.who, { pose: 'power', mouth: 'grin' }, 100, 232, art.s)}
+    </svg>
+    <span class="pname">${fill(c.power)}</span>
+    ${nameOf(c.who) !== c.power ? `<span class="pwho">${nameOf(c.who)}</span>` : ''}
+    <span class="ptext">${fill(c.text)}</span>
+  </div>`;
+}
+
+
+/* =========================================================
+   POWER PUZZLES — the turn loop
+     1. a fairy calls for help
+     2. tap the Power Keeper's flower: the girls' powers wake up (they glow)
+     3. tap the princess with the right power
+        (wrong one: "Hmm, try another power!", and the right one gets a
+         brighter glow and a bouncing arrow)
+     4. she uses her power, the fairy comes out, and her color comes back
+   ========================================================= */
+const GIRLS = ['girl1', 'girl2', 'girl3'];
+// Where everyone stands in a puzzle: ground line, size, and x of each character
+const PZ = { ground: 600, s: 0.55, keeperX: 100, girlX: { girl1: 210, girl2: 300, girl3: 390 } };
+const KEEPER_BUBBLE = { x: 30, y: 170, w: 400, tailX: 50 };
+
+// Where the keeper's flower is on the stage
+function keeperFlowerXY() {
+  const b = BODY.keeper, s = PZ.s;
+  const [sx, sy] = b.shoulderL, [dx, dy] = POSES.down.L;
+  const hx = sx + dx * b.reach, hy = sy + dy * b.reach;   // her hand
+  const fx = hx - 10, fy = hy - 48;                       // the flower on its stem
+  return [PZ.keeperX - b.cx * s + fx * s, PZ.ground - b.feetY * s + fy * s];
+}
+// Top of a character's drawing on the stage
+function topOf(name) { return PZ.ground - BODY[name].feetY * PZ.s; }
+
+// cfg: fairy, title, back, front, tints, props (rock/mist/island),
+//      need (which girl), intro, voiceBubble, usePower(root) -> [x, y] where the fairy appears,
+//      solvedProps(root) (how things look once solved), fairyTo, bubble, doneLines, nextLabel, next
+function powerPuzzle(root, cfg) {
+  const i = cfg.fairy;
+  const [flx, fly] = keeperFlowerXY();
+  worldLayers(root, {
+    ...cfg,
+    actors: `<circle id="flowerGlow" cx="${flx}" cy="${fly}" r="62" fill="url(#charGlow)" opacity="0"/>` +
+            cfg.props +
+            placeTappable('keeper', {}, PZ.keeperX, PZ.ground, PZ.s) +
+            GIRLS.map(n => placeTappable(n, {}, PZ.girlX[n], PZ.ground, PZ.s)).join('') +
+            `<g transform="translate(${flx},${fly})"><circle id="flowerHit" r="60" fill="transparent"/></g>`,
+  });
+  sceneTitle(root, cfg.title);
+  const actors = $('#actorsG', root);
+
+  const finish = async () => {
+    await talk(root, cfg.doneLines.map(text => ({ who: 'fairy' + i, text, ...cfg.bubble })));
+    bottomButton(root, cfg.nextLabel, () => go(cfg.next));
+  };
+
+  // Came back after already solving it? Show it solved.
+  if (Save.data.found > i) {
+    cfg.solvedProps(root);
+    setPerson(root, cfg.need, { pose: 'up', mouth: 'grin' });
+    actors.insertAdjacentHTML('beforeend',
+      `<g transform="translate(${cfg.fairyTo[0]},${cfg.fairyTo[1]}) scale(1.6)"><g class="bob">${drawFairy(i)}</g></g>`);
+    finish();
+    return;
+  }
+
+  let phase = 'intro', pill = null, arrow = null;
+  const flowerGlow = $('#flowerGlow', root);
+
+  // 1. The fairy calls for help
+  talk(root, cfg.intro.map(line => ({ ...line, ...(line.who === 'keeper' ? KEEPER_BUBBLE : cfg.voiceBubble) })))
+    .then(() => {
+      phase = 'flower';
+      flowerGlow.removeAttribute('opacity');
+      flowerGlow.classList.add('pulse');
+      pill = hintPill(root, STORY.flowerHint, () => flowerGlow.classList.add('strong'));
+    });
+
+  // 2. Tap the keeper's flower (or the keeper herself) to wake up the powers
+  const wake = () => {
+    if (phase !== 'flower') return;
+    phase = 'pick';
+    pill.remove();
+    flowerGlow.remove();
+    Sound.play('sparkle');
+    sparkleAt(flx, fly, 16);
+    floatText(root, flx + 120, fly - 150, STORY.powersAwake);
+    GIRLS.forEach(n => setPerson(root, n, { glow: true }));
+    pill = hintPill(root, STORY.pickHint, showHint);
+  };
+  onTap($('#pz-keeper', root), wake, 'sparkle');
+  onTap($('#flowerHit', root), wake, 'sparkle');
+
+  // After a wrong try: the right girl glows brighter and gets a bouncing arrow
+  function showHint() {
+    if (arrow || phase !== 'pick') return;
+    setPerson(root, cfg.need, { glow: true, mouth: 'grin' });
+    $('#pz-' + cfg.need + ' .pulse', root)?.classList.add('strong');
+    arrow = document.createElementNS(SVGNS, 'g');
+    arrow.setAttribute('transform', `translate(${PZ.girlX[cfg.need]},${topOf(cfg.need) - 24})`);
+    arrow.innerHTML = '<g class="bob"><path class="s" d="M-20 -30 L20 -30 L0 4 Z" fill="#F7C948"/></g>';
+    actors.appendChild(arrow);
+  }
+
+  // 3. Tap a princess
+  GIRLS.forEach(n => onTap($('#pz-' + n, root), async () => {
+    const wordsX = Math.max(260, PZ.girlX[n] + 40);
+    if (phase === 'flower') {
+      floatText(root, wordsX, topOf(n) - 20, STORY.flowerFirst);
+      flowerGlow.classList.add('strong');
+      return;
+    }
+    if (phase !== 'pick') return;
+    if (n !== cfg.need) {
+      Sound.play('hmm');
+      floatText(root, wordsX, topOf(n) - 20, STORY.wrongPower);
+      showHint();
+      return;
+    }
+    // 4. The right princess uses her power!
+    phase = 'power';
+    pill.remove();
+    if (arrow) arrow.remove();
+    setPerson(root, n, { pose: 'power', mouth: 'grin', glow: true });
+    const from = await cfg.usePower(root);
+    GIRLS.forEach(g => setPerson(root, g, g === n ? { pose: 'up', mouth: 'grin' } : { mouth: 'grin' }));
+    await findFairy(root, i, from, cfg.fairyTo);
+    finish();
+  }));
 }
 
 
@@ -1377,18 +1656,225 @@ const SCREENS = {
     });
   },
 
-  /* ---------- 8. WE HAVE POWERS! (coming in build step 4) ---------- */
+  /* ---------- 8. WE HAVE POWERS! ---------- */
   powers(root) {
+    const cast = glow =>
+      place('girl1', { glow, mouth: glow ? 'grin' : 'smile' }, 470, 620, 0.7) +
+      place('girl2', { glow, mouth: glow ? 'grin' : 'o' }, 590, 620, 0.7) +
+      place('girl3', { glow, mouth: glow ? 'grin' : 'smile' }, 710, 620, 0.7) +
+      place('keeper', {}, 860, 620, 0.7);
     root.innerHTML = `
       <svg class="bg" viewBox="0 0 1280 720" aria-hidden="true">
         <defs><radialGradient id="pwBurst" cx="0.5" cy="0.55" r="0.6"><stop offset="0" stop-color="#4a3f8a"/><stop offset="1" stop-color="#151236"/></radialGradient></defs>
         <rect width="1280" height="720" fill="url(#pwBurst)"/>
         ${starsSVG(50, 5, 720)}
-        ${placeFairy(0, 520, 200, 1.2, 0)}${placeFairy(1, 760, 200, 1.2, 0.6)}
+      </svg>
+      <div class="layer" id="pwCast"><svg viewBox="0 0 1280 720">
+        <g id="pwGirls">${cast(false)}</g>
+        ${placeFairy(0, 470, 270, 1.2, 0)}${placeFairy(1, 800, 270, 1.2, 0.6)}
+      </svg></div>`;
+    sceneTitle(root, STORY.powersTitle);
+    fairyCounter(root);
+
+    const spots = [{ x: 250, y: 120, w: 400, tailX: 200 }, { x: 560, y: 120, w: 400, tailX: 226 }];
+    const lines = STORY.powersLines.map((l, k) => ({ ...l, ...spots[k % 2] }));
+    // The moon dust falls as soon as the first line appears, then the girls start to glow
+    lines[0].onShow = () => {
+      moonDust(400, 780, 300, 600);
+      setTimeout(() => { $('#pwGirls', root).innerHTML = cast(true); Sound.play('sparkle'); }, 1000);
+    };
+
+    talk(root, lines).then(async () => {
+      // Fade out the girls and show the power cards one at a time
+      const castLayer = $('#pwCast', root);
+      await castLayer.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400, fill: 'forwards' }).finished;
+      castLayer.remove();
+      const cards = el('div', 'cards', root);
+      const hint = hintPill(root, STORY.cardsHint);
+      let k = 0;
+      const addCard = () => {
+        cards.insertAdjacentHTML('beforeend', powerCard(STORY.powerCards[k]));
+        Sound.play(k === STORY.powerCards.length - 1 ? 'chime' : 'sparkle');
+        k++;
+      };
+      addCard();
+      const catcher = el('div', 'catcher', root);
+      catcher.addEventListener('click', () => {
+        if (k < STORY.powerCards.length) addCard();
+        if (k === STORY.powerCards.length) {
+          catcher.remove();
+          hint.remove();
+          bottomButton(root, STORY.powersNext, () => go('rocky'));
+        }
+      });
+    });
+  },
+
+  /* ---------- 9. AREA 3: ROCKY HILL (fairy 3 needs Move Things) ---------- */
+  rocky(root) {
+    const dark = MOONBOW[2];
+    powerPuzzle(root, {
+      fairy: 2,
+      need: 'girl2',
+      title: STORY.rockyTitle,
+      back: fairySky('rkSky', 53, '#3a3468', '#a99cd8') +
+            '<path class="s" d="M480 432 L700 220 L860 360 L980 260 L1200 432 Z" fill="#7d7a8e"/>' +
+            '<path d="M700 222 L664 258 L700 250 L734 266 Z M980 262 L952 290 L980 284 L1006 296 Z" fill="#fff"/>',
+      front: GROUND + pine(1010, 560) + pine(1220, 545, 1.2) + pine(560, 548, 0.8) +
+             '<ellipse class="s" cx="610" cy="652" rx="40" ry="20" fill="#9a96a8"/><ellipse class="s" cx="1170" cy="660" rx="52" ry="24" fill="#9a96a8"/>' +
+             grass(470, 640) + grass(940, 660) + grass(1250, 640),
+      // these crystals turn sparkly charcoal when the third fairy is found
+      tints: crystal(520, 625, 0.9, tint(2, dark)) + crystal(700, 650, 0.7, tint(2, dark)) +
+             crystal(960, 630, 1, tint(2, dark)) + crystal(1240, 690, 0.8, tint(2, dark)),
+      props: `<ellipse id="rockGlow" class="pulse" cx="820" cy="588" rx="190" ry="36" fill="url(#fairyGlow2)"/>
+        <g id="rock" transform="translate(820,590)">
+          <path class="s" fill="#8d8a99" d="M-150 0 Q-162 -90 -92 -140 Q-20 -192 60 -162 Q150 -130 160 -40 Q164 -6 150 0 Z"/>
+          <path class="s n" style="stroke-width:3" d="M-70 -110 Q-40 -132 -6 -122 M40 -60 Q72 -82 104 -62"/>
+        </g>`,
+      intro: STORY.rockyIntro,
+      voiceBubble: { x: 600, y: 170, w: 400, tailX: 190 },
+      async usePower(root) {
+        const rock = $('#rock', root);
+        Sound.play('lift');
+        await sparkleTrail([PZ.girlX.girl2 + 30, topOf('girl2')], [820, 480]);
+        // up it goes, with a little wobble...
+        await tween(700, t => rock.setAttribute('transform', `translate(820,${(590 - 200 * t).toFixed(1)}) rotate(${(Math.sin(t * 12) * 4).toFixed(2)})`));
+        fadeOut($('#rockGlow', root));
+        // ...and floats gently down out of the way
+        await tween(800, t => rock.setAttribute('transform',
+          `translate(${(820 + 300 * t).toFixed(1)},${(390 + 250 * t).toFixed(1)}) rotate(${(10 * t).toFixed(2)}) scale(${(1 - 0.4 * t).toFixed(3)})`),
+          t => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2));
+        sparkleAt(1120, 620, 10);
+        return [820, 540];
+      },
+      solvedProps(root) {
+        $('#rock', root).setAttribute('transform', 'translate(1120,640) rotate(10) scale(.6)');
+        $('#rockGlow', root).remove();
+      },
+      fairyTo: [700, 335],
+      bubble: { x: 380, y: 56, w: 440, tailX: 300 },
+      doneLines: STORY.rockyDone,
+      nextLabel: STORY.rockyNext,
+      next: 'pond',
+    });
+  },
+
+  /* ---------- 10. AREA 4: MISTY POND (fairy 4 needs Spells) ---------- */
+  pond(root) {
+    const lav = MOONBOW[3];
+    const mist = [[700, 520, 200], [930, 500, 220], [820, 440, 250], [620, 470, 160], [1030, 560, 180], [820, 590, 260]];
+    powerPuzzle(root, {
+      fairy: 3,
+      need: 'girl3',
+      title: STORY.pondTitle,
+      back: fairySky('pdSky', 61, '#2f3a6e', '#9fb6e0'),
+      front: GROUND +
+             '<ellipse class="s" cx="820" cy="604" rx="290" ry="60" fill="#5aa9d6"/><ellipse cx="780" cy="592" rx="190" ry="30" fill="#7fc4e8"/>' +
+             '<path class="s" d="M640 610 A34 14 0 1 1 680 618 L660 610 Z" fill="#3fa36f"/><path class="s" d="M940 596 A30 12 0 1 1 976 602 L958 596 Z" fill="#3fa36f"/>' +
+             bush(520, 548, 0.8) + bush(1200, 548, 0.9) +
+             '<path class="s n" style="stroke:#1f6b47" d="M1080 600 L1074 520 M1096 604 L1100 510 M1112 600 L1122 530"/>' +
+             grass(470, 650) + grass(1240, 650),
+      // lavender irises and lily flowers bloom when the fourth fairy is found
+      tints: flower(560, 615, 0.9, tint(3, lav)) + flower(1150, 625, 1, tint(3, lav)) + flower(1225, 610, 0.75, tint(3, lav)) +
+             `<circle class="s" style="stroke-width:3" cx="662" cy="602" r="9" ${tint(3, lav)}/><circle class="s" style="stroke-width:3" cx="958" cy="588" r="8" ${tint(3, lav)}/>`,
+      props: `<g id="ghost" transform="translate(820,450) scale(1.3)"><g class="shimmer"><g class="bob">${drawFairy(3, { glow: false })}</g></g></g>
+        <g id="mist">${mist.map(([x, y, rx], k) =>
+          `<g class="drift" style="animation-delay:${-k * 1.3}s"><ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${Math.round(rx * 0.28)}" fill="#f4f1ea" opacity=".6"/></g>`).join('')}</g>`,
+      intro: STORY.pondIntro,
+      voiceBubble: { x: 600, y: 130, w: 420, tailX: 200 },
+      async usePower(root) {
+        Sound.play('sparkle');
+        await sparkleTrail([PZ.girlX.girl3 + 40, topOf('girl3') - 10], [820, 460], 9, 800);
+        Sound.play('chime');
+        sparkleAt(820, 460, 20);
+        const mistG = $('#mist', root), ghost = $('#ghost', root);
+        await tween(1000, t => { mistG.setAttribute('opacity', 1 - t); ghost.setAttribute('opacity', 1 - t); });
+        mistG.remove();
+        ghost.remove();
+        return [820, 460];
+      },
+      solvedProps(root) { $('#mist', root).remove(); $('#ghost', root).remove(); },
+      fairyTo: [700, 335],
+      bubble: { x: 380, y: 56, w: 440, tailX: 300 },
+      doneLines: STORY.pondDone,
+      nextLabel: STORY.pondNext,
+      next: 'cloud',
+    });
+  },
+
+  /* ---------- 11. AREA 5: FLOATING CLOUD ISLAND (fairy 5 needs Teleport) ---------- */
+  cloud(root) {
+    const teal = MOONBOW[4];
+    const IX = 1040, IY = 380;   // where the floating island is
+    powerPuzzle(root, {
+      fairy: 4,
+      need: 'girl1',
+      title: STORY.cloudTitle,
+      back: fairySky('clSky', 89, '#2b4f8f', '#a8d8f0', false) +
+            cloud(300, 300, 0.8, '#e6eef7') + cloud(760, 240, 1.1, '#e6eef7') + cloud(1200, 520, 0.9, '#e6eef7'),
+      // a cliff on the left, a sea of clouds below, and the island far away
+      front: '<path d="M0 520 Q240 500 520 524 Q600 532 640 560 L610 720 L0 720 Z" fill="#3fa36f" stroke="#1d1838" stroke-width="4"/>' +
+             [640, 760, 880, 1000, 1120, 1240].map((x, k) => cloud(x, 730 - (k % 2) * 16, 1.3)).join('') +
+             `<g transform="translate(${IX},${IY})">
+                <path class="s" d="M-130 0 Q-70 100 0 120 Q70 100 130 0 Z" fill="#8a6a4a"/>
+                <ellipse class="s" cx="0" cy="0" rx="136" ry="26" fill="#3fa36f"/>
+                <path class="s n" style="stroke-width:3" d="M-60 40 L-40 70 M30 50 L50 86"/>
+              </g>` +
+             grass(470, 610) + grass(560, 600),
+      // the island's little trees and the cliff flowers turn teal when the last fairy is found
+      tints: `<g transform="translate(${IX - 95},${IY - 6})"><rect class="s" style="stroke-width:3" x="-5" y="-40" width="10" height="40" fill="#7a5235"/><circle class="s" style="stroke-width:3" cx="0" cy="-52" r="24" ${tint(4, teal)}/></g>` +
+             `<g transform="translate(${IX + 100},${IY - 4})"><rect class="s" style="stroke-width:3" x="-5" y="-34" width="10" height="34" fill="#7a5235"/><circle class="s" style="stroke-width:3" cx="0" cy="-44" r="20" ${tint(4, teal)}/></g>` +
+             flower(500, 600, 0.9, tint(4, teal)) + flower(590, 590, 0.7, tint(4, teal)),
+      props: `<g id="farFairy" transform="translate(${IX + 20},${IY - 60}) scale(.6)"><g class="bob">${drawFairy(4)}</g></g>`,
+      intro: STORY.cloudIntro,
+      voiceBubble: { x: 640, y: 124, w: 400, tailX: 330 },
+      async usePower(root) {
+        const actors = $('#actorsG', root), me = $('#pz-girl1', root);
+        const gx = PZ.girlX.girl1, gy = PZ.ground - 90;
+        // Poof! She vanishes...
+        Sound.play('poof'); sparkleAt(gx, gy, 16);
+        await tween(250, t => me.setAttribute('opacity', 1 - t));
+        // ...and pops up on the island next to the fairy
+        const there = document.createElementNS(SVGNS, 'g');
+        there.innerHTML = place('girl1', { pose: 'up', mouth: 'grin' }, IX - 35, IY - 8, 0.3);
+        there.setAttribute('opacity', 0);
+        actors.appendChild(there);
+        await wait(250);
+        Sound.play('poof'); sparkleAt(IX - 35, IY - 60, 16);
+        await tween(250, t => there.setAttribute('opacity', t));
+        await wait(1000);
+        // Poof! Both of them zip back
+        const far = $('#farFairy', root);
+        Sound.play('poof'); sparkleAt(IX - 10, IY - 60, 22);
+        await tween(250, t => { there.setAttribute('opacity', 1 - t); far.setAttribute('opacity', 1 - t); });
+        there.remove();
+        far.remove();
+        await wait(250);
+        Sound.play('poof'); sparkleAt(gx, gy, 16);
+        await tween(250, t => me.setAttribute('opacity', t));
+        return [gx + 80, gy - 60];
+      },
+      solvedProps(root) { $('#farFairy', root).remove(); },
+      fairyTo: [700, 335],
+      bubble: { x: 380, y: 56, w: 440, tailX: 300 },
+      doneLines: STORY.cloudDone,
+      nextLabel: STORY.cloudNext,
+      next: 'finale',
+    });
+  },
+
+  /* ---------- 12. THE MOONBOW RETURNS (coming in build step 5) ---------- */
+  finale(root) {
+    root.innerHTML = `
+      <svg class="bg" viewBox="0 0 1280 720" aria-hidden="true">
+        <defs><linearGradient id="fnSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#151236"/><stop offset="1" stop-color="#4a3f8a"/></linearGradient></defs>
+        <rect width="1280" height="720" fill="url(#fnSky)"/>
+        ${starsSVG(50, 3, 500)}
+        ${moonbowArc(640, 560, 490, 440, 26)}
       </svg>`;
     const card = el('div', 'card', root);
-    card.style.cssText = 'top:340px;width:700px';
-    card.innerHTML = 'We Have Powers!<br><span style="font-size:24px;opacity:.8">(The next part of the adventure is coming soon.)</span>';
+    card.style.cssText = 'top:300px;width:700px;background:rgba(29,24,56,.85)';
+    card.innerHTML = 'The Moonbow Returns!<br><span style="font-size:24px;opacity:.8">(The ending is coming soon.)</span>';
     bottomButton(root, 'Back to the start', () => go('title'));
   },
 };
