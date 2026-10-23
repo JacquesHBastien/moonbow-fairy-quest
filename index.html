@@ -203,6 +203,31 @@ svg .n { fill: none; }
   text-shadow: 0 2px 8px rgba(0,0,0,.6); pointer-events: none;
 }
 .center-col { position: absolute; left: 0; right: 0; top: 330px; display: flex; flex-direction: column; align-items: center; gap: 20px; z-index: 8; }
+
+/* ---------- Fairy World ---------- */
+.layer .tappable { pointer-events: auto; }
+/* Colors fade back in smoothly when a fairy is found */
+.moonbow-stripe { transition: stroke 1.4s ease; }
+[data-tint] { transition: fill 1.4s ease; }
+
+/* "Moonbow fairies found: 1 of 5" */
+.counter {
+  position: absolute; right: 124px; top: 22px; z-index: 8;
+  background: #fff; border-radius: 22px; padding: 10px 18px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.2); pointer-events: none;
+}
+.counter .lbl { font-family: var(--head); font-weight: 600; font-size: 19px; }
+.counter .dots { display: flex; gap: 10px; }
+.counter .dot { width: 30px; height: 30px; border-radius: 50%; border: 3px dashed #8a8a92; box-sizing: border-box; }
+.counter .dot.on { border: 3px solid var(--ink); animation: pop .6s cubic-bezier(.3,1.6,.5,1); }
+
+/* "Not here..." words that float up after tapping a sparkle */
+.float-text {
+  position: absolute; z-index: 12; pointer-events: none; white-space: nowrap;
+  font-family: var(--head); font-weight: 700; font-size: 34px; color: #fff;
+  text-shadow: 0 0 4px #1d1838, 0 3px 0 #1d1838, 0 0 18px rgba(0,0,0,.5);
+}
 </style>
 </head>
 <body>
@@ -224,6 +249,12 @@ svg .n { fill: none; }
     <radialGradient id="charGlow"><stop offset="0" stop-color="#fff6c9" stop-opacity=".9"/><stop offset="1" stop-color="#fff6c9" stop-opacity="0"/></radialGradient>
     <radialGradient id="starGlow"><stop offset="0" stop-color="#fff6c9" stop-opacity=".95"/><stop offset="1" stop-color="#fff6c9" stop-opacity="0"/></radialGradient>
     <radialGradient id="lilacGlow"><stop offset="0" stop-color="#E7CCF7" stop-opacity=".6"/><stop offset="1" stop-color="#E7CCF7" stop-opacity="0"/></radialGradient>
+    <!-- one soft glow per fairy, matching her color -->
+    <radialGradient id="fairyGlow0"><stop offset="0" stop-color="#E8826A" stop-opacity=".7"/><stop offset="1" stop-color="#E8826A" stop-opacity="0"/></radialGradient>
+    <radialGradient id="fairyGlow1"><stop offset="0" stop-color="#ffffff" stop-opacity=".8"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></radialGradient>
+    <radialGradient id="fairyGlow2"><stop offset="0" stop-color="#E7CCF7" stop-opacity=".8"/><stop offset="1" stop-color="#E7CCF7" stop-opacity="0"/></radialGradient>
+    <radialGradient id="fairyGlow3"><stop offset="0" stop-color="#8E86C9" stop-opacity=".75"/><stop offset="1" stop-color="#8E86C9" stop-opacity="0"/></radialGradient>
+    <radialGradient id="fairyGlow4"><stop offset="0" stop-color="#4FB3A9" stop-opacity=".75"/><stop offset="1" stop-color="#4FB3A9" stop-opacity="0"/></radialGradient>
   </defs>
 </svg>
 
@@ -259,6 +290,32 @@ const STORY = {
   portalTitle: 'The Moon Portal',
   portalLines: ['Hold hands, everyone. This door goes to Fairy World!'],
   portalHint: 'Tap the portal to jump in!',
+
+  // {fairy0} {fairy1} ... are the fairies' names from CONFIG.fairies
+  grayTitle: 'Fairy World Lost Its Color',
+  grayLines: [
+    { who: 'girl1',  text: 'Oh no! Where did all the colors go?' },
+    { who: 'keeper', text: 'The five Moonbow Fairies are lost. Without them, Fairy World turns gray.' },
+    { who: 'girl3',  text: "Let's find them and bring the colors back!" },
+  ],
+  grayNext: "Let's look! &#9656;",
+
+  searchHint: 'Tap the sparkles to look for a fairy!',
+  notHere: ['Not here...', 'Keep looking!', 'Getting closer!'],
+
+  meadowTitle: 'Mushroom Meadow',
+  meadowLines: [
+    "I'm {fairy0}, the first Moonbow Fairy! Thank you for finding me!",
+    'My sister {fairy1} is hiding in the Flower Garden. Look near the biggest flower!',
+  ],
+  meadowNext: 'To the Flower Garden &#9656;',
+
+  gardenTitle: 'Flower Garden',
+  gardenLines: [
+    "I'm {fairy1}, the second Moonbow Fairy! You found me!",
+    '{fairy0} and I have a big surprise for you. Come with us!',
+  ],
+  gardenNext: 'Follow the fairies &#9656;',
 };
 
 /* The moonbow's 5 colors, outside to inside. One per fairy. */
@@ -275,9 +332,14 @@ function el(tag, cls, parent) {
   if (parent) parent.appendChild(e);
   return e;
 }
-// Swap {girl1} etc. in story text for names from CONFIG
+// A character's name: 'girl1' -> CONFIG.girl1, 'fairy0' -> CONFIG.fairies[0]
+function nameOf(who) {
+  const f = /^fairy(\d)$/.exec(who);
+  return f ? CONFIG.fairies[+f[1]] : CONFIG[who];
+}
+// Swap {girl1}, {fairy0} etc. in story text for names from CONFIG
 function fill(text) {
-  return text.replace(/\{(\w+)\}/g, (m, key) => CONFIG[key] || m);
+  return text.replace(/\{(\w+)\}/g, (m, key) => nameOf(key) || m);
 }
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
@@ -612,7 +674,7 @@ const FAIRY_LOOK = [
 function drawFairy(i, { glow = true } = {}) {
   const look = FAIRY_LOOK[i], dress = MOONBOW[i];
   return `<g>
-    ${glow ? `<circle class="pulse" cx="0" cy="26" r="62" fill="${look.glow}" opacity=".35"/>` : ''}
+    ${glow ? `<circle class="pulse" cx="0" cy="26" r="66" fill="url(#fairyGlow${i})"/>` : ''}
     <g class="flap">
       <ellipse class="s" style="stroke-width:3" cx="-24" cy="18" rx="26" ry="15" fill="${look.wing}"/>
       <ellipse class="s" style="stroke-width:3" cx="24" cy="18" rx="26" ry="15" fill="${look.wing}"/>
@@ -687,7 +749,7 @@ function sceneTitle(parent, text) {
 function bubble(parent, { who, text, x, y, w = 360, tailX = 60 }) {
   const b = el('div', 'bubble', parent);
   b.style.cssText = `left:${x}px;top:${y}px;width:${w}px;--tail-x:${tailX}px`;
-  b.innerHTML = (who ? `<span class="who">${CONFIG[who]}</span>` : '') +
+  b.innerHTML = (who ? `<span class="who">${nameOf(who)}</span>` : '') +
                 `<div>${fill(text)}</div><span class="more">tap &#9656;</span>`;
   return b;
 }
@@ -762,6 +824,262 @@ function confetti(count = 90) {
 
 function flash() {
   return $('#flash').animate([{ opacity: 0 }, { opacity: 1 }, { opacity: 0 }], { duration: 700, easing: 'ease-in-out' }).finished;
+}
+
+
+/* =========================================================
+   FAIRY WORLD SCENERY — trees, mushrooms, flowers...
+   Most take (x, y) = the spot where it touches the ground.
+   ========================================================= */
+// Things that turn a fairy's color when she's found. Use as: mushroom(x, y, s, tint(0, '#E8826A'))
+const GRAY_TINT = '#bdbac6';
+function tint(i, color) {
+  return `fill="${Save.data.found > i ? color : GRAY_TINT}" data-tint="${i}" data-color="${color}"`;
+}
+
+function fairySky(id, seed, top = '#3d3470', bottom = '#b9a3e3') {
+  return `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${top}"/><stop offset="1" stop-color="${bottom}"/></linearGradient></defs>
+    <rect width="1280" height="720" fill="url(#${id})"/>
+    ${starsSVG(30, seed, 300)}
+    <circle cx="110" cy="170" r="34" fill="#f4efd9"/>
+    <path d="M0 430 Q200 370 400 420 T800 410 T1280 400 L1280 720 L0 720 Z" fill="#5a9e86"/>`;
+}
+const GROUND = '<path d="M0 540 Q320 500 640 528 T1280 520 L1280 720 L0 720 Z" fill="#3fa36f" stroke="#1d1838" stroke-width="4"/>';
+
+// capAttrs is like 'fill="#d9534f"' or tint(0, '#E8826A')
+function mushroom(x, y, s, capAttrs, spots = '#fff') {
+  return `<g transform="translate(${x},${y}) scale(${s})">
+    <path class="s" d="M-14 0 Q-18 -40 -12 -60 L12 -60 Q18 -40 14 0 Z" fill="#f4ead2"/>
+    <path class="s" ${capAttrs} d="M-58 -56 Q-56 -120 0 -124 Q56 -120 58 -56 Q0 -44 -58 -56 Z"/>
+    <circle cx="-26" cy="-90" r="9" fill="${spots}"/><circle cx="10" cy="-104" r="8" fill="${spots}"/>
+    <circle cx="32" cy="-78" r="7" fill="${spots}"/><circle cx="-4" cy="-72" r="6" fill="${spots}"/>
+  </g>`;
+}
+function tree(x, y, s = 1) {
+  return `<g transform="translate(${x},${y}) scale(${s})">
+    <rect class="s" x="-18" y="-240" width="36" height="240" fill="#7a5235"/>
+    <circle class="s" cx="0" cy="-275" r="100" fill="#2f8a5e"/>
+    <circle class="s" cx="-70" cy="-310" r="58" fill="#3fa36f"/>
+  </g>`;
+}
+function flower(x, y, s, petalAttrs, center = '#F7C948') {
+  let petals = '';
+  for (let k = 0; k < 6; k++) petals += `<ellipse class="s" style="stroke-width:3" cx="0" cy="-14" rx="8" ry="13" transform="rotate(${k * 60})" ${petalAttrs}/>`;
+  return `<g transform="translate(${x},${y}) scale(${s})">
+    <path class="s n" style="stroke:#1f6b47" d="M0 0 L0 -56"/>
+    <path class="s" style="stroke-width:3" d="M0 -24 Q16 -36 24 -24 Q12 -16 0 -24Z" fill="#3fa36f"/>
+    <g transform="translate(0,-62)">${petals}<circle class="s" style="stroke-width:3" r="9" fill="${center}"/></g>
+  </g>`;
+}
+function tulip(x, y, s, color) {
+  return `<g transform="translate(${x},${y}) scale(${s})">
+    <path class="s n" style="stroke:#1f6b47" d="M0 0 L0 -40"/>
+    <path class="s" style="stroke-width:3" d="M-12 -52 L-12 -36 Q0 -28 12 -36 L12 -52 L6 -44 L0 -54 L-6 -44 Z" fill="${color}"/>
+  </g>`;
+}
+function bush(x, y, s, color = '#2f8a5e') {
+  return `<g transform="translate(${x},${y}) scale(${s})">
+    <path class="s" fill="${color}" d="M-90 0 Q-100 -50 -60 -60 Q-50 -100 0 -96 Q50 -100 60 -60 Q100 -50 90 0 Z"/>
+  </g>`;
+}
+function log(x, y) {
+  return `<g transform="translate(${x},${y})">
+    <rect class="s" x="-70" y="-44" width="140" height="44" rx="22" fill="#8a5a3b"/>
+    <ellipse class="s" cx="70" cy="-22" rx="16" ry="22" fill="#d9a066"/>
+    <path class="s n" style="stroke-width:3" d="M64 -22 Q70 -32 76 -22"/>
+  </g>`;
+}
+function grass(x, y) {
+  return `<path class="s n" style="stroke:#1f6b47" d="M${x - 10} ${y} L${x - 15} ${y - 18} M${x} ${y} L${x} ${y - 24} M${x + 10} ${y} L${x + 15} ${y - 18}"/>`;
+}
+
+/* =========================================================
+   FAIRY WORLD — the gray-to-color magic.
+   A Fairy World screen is a stack of see-through layers:
+     1. sky + far hills ........ goes gray
+     2. the moonbow arc ........ found stripes are in color
+     3. ground, trees, etc. .... goes gray
+     4. "tint" things .......... turn a fairy's color when she's found
+     5. girls, fairies, sparkles  always in full color
+   The gray fades a step each time a fairy is found
+   (all gray with 0 fairies, full color with 5).
+   ========================================================= */
+const SVGNS = 'http://www.w3.org/2000/svg';
+
+function worldLayers(root, { back, front, tints = '', actors = '' }) {
+  const shown = MOONBOW.map((c, i) => Save.data.found > i);
+  root.innerHTML = `
+    <div class="layer world"><svg viewBox="0 0 1280 720">${back}</svg></div>
+    <div class="layer"><svg viewBox="0 0 1280 720">${moonbowArc(640, 470, 460, 330, 18, shown)}</svg></div>
+    <div class="layer world"><svg viewBox="0 0 1280 720">${front}</svg></div>
+    <div class="layer"><svg viewBox="0 0 1280 720">${tints}</svg></div>
+    <div class="layer"><svg viewBox="0 0 1280 720"><g id="actorsG">${actors}</g></svg></div>`;
+  setGray(root, false);
+  fairyCounter(root);
+}
+
+// How gray the world is: 1 = all gray, 0 = full color
+function setGray(root, animate) {
+  const amount = 1 - Save.data.found / MOONBOW.length;
+  root.querySelectorAll('.world').forEach(w => {
+    w.style.transition = animate ? 'filter 1.8s ease' : 'none';
+    w.style.filter = `grayscale(${amount})`;
+  });
+}
+
+// Color in the moonbow stripes and tint things for every fairy found so far
+function paintColors(root) {
+  const n = Save.data.found;
+  root.querySelectorAll('.moonbow-stripe').forEach(p => { if (+p.dataset.i < n) p.style.stroke = MOONBOW[+p.dataset.i]; });
+  root.querySelectorAll('[data-tint]').forEach(e => { if (+e.dataset.tint < n) e.style.fill = e.dataset.color; });
+}
+
+// The "Moonbow fairies found" box in the top right
+function fairyCounter(root) {
+  const c = el('div', 'counter', root);
+  c.innerHTML = `<span class="lbl"></span><div class="dots">${MOONBOW.map(() => '<span class="dot"></span>').join('')}</div>`;
+  updateCounter(root);
+}
+function updateCounter(root) {
+  const n = Save.data.found;
+  const lbl = $('.counter .lbl', root);
+  if (!lbl) return;
+  lbl.textContent = `Moonbow fairies found: ${n} of ${MOONBOW.length}`;
+  root.querySelectorAll('.counter .dot').forEach((d, i) => {
+    if (i < n && !d.classList.contains('on')) { d.classList.add('on'); d.style.background = MOONBOW[i]; }
+  });
+}
+
+// Smoothly change something over time. fn gets t from 0 to 1.
+function tween(ms, fn, ease = t => 1 - Math.pow(1 - t, 3)) {
+  return new Promise(done => {
+    const t0 = performance.now();
+    const step = now => {
+      const t = Math.min(1, (now - t0) / ms);
+      fn(ease(t));
+      if (t < 1) requestAnimationFrame(step); else done();
+    };
+    requestAnimationFrame(step);
+  });
+}
+function fadeOut(node, ms = 400) {
+  return tween(ms, t => node.setAttribute('opacity', 1 - t)).then(() => node.remove());
+}
+
+// Words that float up and fade, like "Not here..."
+function floatText(root, x, y, text) {
+  const f = el('div', 'float-text', root);
+  f.textContent = fill(text);
+  f.style.left = x + 'px';
+  f.style.top = y + 'px';
+  f.animate([
+    { transform: 'translate(-50%,-50%) scale(.6)', opacity: 0 },
+    { transform: 'translate(-50%,-90%) scale(1)', opacity: 1, offset: 0.25 },
+    { transform: 'translate(-50%,-180%) scale(1)', opacity: 0 },
+  ], { duration: 1600, easing: 'ease-out' }).onfinish = () => f.remove();
+}
+
+// A glowing sparkle to tap. k = its number in the list.
+function sparkleSpot(x, y, k) {
+  return `<g transform="translate(${x},${y})"><g class="spot" data-spot="${k}">
+    <circle r="62" fill="transparent"/>
+    <circle class="pulse" r="52" fill="url(#charGlow)" style="animation-delay:${k * 0.4}s"/>
+    <g class="spin" style="animation-duration:6s"><path d="M0 -28 Q4 -4 28 0 Q4 4 0 28 Q-4 4 -28 0 Q-4 -4 0 -28Z" fill="#fff6c9" stroke="#F7C948" stroke-width="2.5"/></g>
+    <circle class="tw" cx="24" cy="-22" r="4" fill="#fff"/><circle class="tw" style="animation-delay:1.2s" cx="-22" cy="18" r="3" fill="#fff"/>
+  </g></g>`;
+}
+
+// A fairy pops out of a sparkle at (fx, fy), flies to (tx, ty), and her color comes back
+async function findFairy(root, i, [fx, fy], [tx, ty]) {
+  const holder = document.createElementNS(SVGNS, 'g');
+  holder.innerHTML = `<g class="bob">${drawFairy(i)}</g>`;
+  holder.setAttribute('transform', `translate(${fx},${fy}) scale(0)`);
+  $('#actorsG', root).appendChild(holder);
+  Sound.play('sparkle');
+  sparkleAt(fx, fy, 14);
+  // pop out...
+  await tween(450, t => holder.setAttribute('transform', `translate(${fx},${fy}) scale(${(1.3 * t).toFixed(3)})`),
+    t => 1 + 2.7 * Math.pow(t - 1, 3) + 1.7 * Math.pow(t - 1, 2));
+  // ...then swoop up to her spot
+  await tween(900, t => {
+    const x = fx + (tx - fx) * t, y = fy + (ty - fy) * t - Math.sin(t * Math.PI) * 80;
+    holder.setAttribute('transform', `translate(${x.toFixed(1)},${y.toFixed(1)}) scale(${(1.3 + 0.3 * t).toFixed(3)})`);
+  }, t => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2));
+  await returnColor(root, i, tx, ty);
+}
+
+// Fairy i is home: save it, ring of color, world gets less gray, her stripe and things color in
+async function returnColor(root, i, x, y) {
+  Save.data.found = Math.max(Save.data.found, i + 1);
+  Save.write();
+  Sound.play('cheer');
+
+  const ring = document.createElementNS(SVGNS, 'circle');
+  ring.setAttribute('cx', x); ring.setAttribute('cy', y + 30);
+  ring.setAttribute('fill', 'none');
+  ring.setAttribute('stroke', MOONBOW[i]);
+  ring.setAttribute('stroke-width', 36);
+  const actors = $('#actorsG', root);
+  actors.insertBefore(ring, actors.firstChild);
+  tween(1500, t => { ring.setAttribute('r', 20 + t * 1000); ring.setAttribute('opacity', 1 - t); }).then(() => ring.remove());
+
+  sparkleAt(x, y, 18, [MOONBOW[i], '#fff6c9', '#F7C948']);
+  setGray(root, true);
+  paintColors(root);
+  updateCounter(root);
+  await wait(1400);
+}
+
+// One sparkle-search area. cfg says where everything goes (see meadow/garden below).
+// The fairy is under the 3rd sparkle she taps, or right away if she taps the hinted one.
+function searchArea(root, cfg) {
+  const i = cfg.fairy;
+  worldLayers(root, cfg);
+  sceneTitle(root, cfg.title);
+  const actors = $('#actorsG', root);
+  const lines = cfg.lines.map(text => ({ who: 'fairy' + i, text, ...cfg.bubble }));
+  const finish = async () => {
+    await talk(root, lines);
+    bottomButton(root, cfg.nextLabel, () => go(cfg.next));
+  };
+
+  // Came back to this screen after already finding her? Skip the search.
+  if (Save.data.found > i) {
+    actors.insertAdjacentHTML('beforeend',
+      `<g transform="translate(${cfg.fairyTo[0]},${cfg.fairyTo[1]}) scale(1.6)"><g class="bob">${drawFairy(i)}</g></g>`);
+    finish();
+    return;
+  }
+
+  const spots = document.createElementNS(SVGNS, 'g');
+  spots.innerHTML = cfg.spots.map(([x, y], k) => sparkleSpot(x, y, k)).join('');
+  actors.appendChild(spots);
+  const pill = hintPill(root, STORY.searchHint, () => spots.querySelectorAll('.pulse').forEach(p => p.classList.add('strong')));
+
+  let looked = 0, found = false;
+  spots.querySelectorAll('.spot').forEach(spot => {
+    onTap(spot, async () => {
+      if (found || spot.dataset.done) return;
+      spot.dataset.done = '1';
+      looked++;
+      const k = +spot.dataset.spot, [x, y] = cfg.spots[k];
+      fadeOut(spot.parentNode);
+      if (looked < 3 && k !== cfg.hintSpot) {
+        floatText(root, x, y - 50, STORY.notHere[looked - 1]);
+        return;
+      }
+      found = true;
+      pill.remove();
+      spots.querySelectorAll('.spot').forEach(s => { if (!s.dataset.done) fadeOut(s.parentNode); });
+      await findFairy(root, i, [x, y], cfg.fairyTo);
+      finish();
+    }, 'sparkle');
+  });
+}
+
+// The three girls standing together on the left of a Fairy World screen
+function girlsLeft(ground = 650, s = 0.55) {
+  return place('girl1', {}, 110, ground, s) + place('girl2', {}, 195, ground, s) + place('girl3', {}, 280, ground, s);
 }
 
 
@@ -988,19 +1306,89 @@ const SCREENS = {
     }, 'sparkle');
   },
 
-  /* ---------- 5. FAIRY WORLD (coming in build step 3) ---------- */
+  /* ---------- 5. FAIRY WORLD IS GRAY ---------- */
   gray(root) {
+    worldLayers(root, {
+      back: fairySky('gwSky', 11),
+      front: GROUND + tree(1070, 545) + mushroom(730, 540, 1.1, 'fill="#d9534f"') +
+             flower(560, 538, 1, 'fill="#E86A92"') + flower(610, 530, 0.8, 'fill="#F7C948"', '#E86A92') +
+             flower(900, 540, 0.9, 'fill="#B07BE0"') + grass(640, 600) + grass(840, 640) + grass(1180, 610),
+      actors: place('girl1', {}, 160, 610, 0.6) + place('girl2', {}, 260, 610, 0.6) +
+              place('girl3', {}, 360, 610, 0.6) + place('keeper', {}, 480, 610, 0.6),
+    });
+    sceneTitle(root, STORY.grayTitle);
+    const spots = [
+      { x: 40,  y: 200, w: 380, tailX: 100 },  // girl1
+      { x: 300, y: 150, w: 440, tailX: 150 },  // keeper
+      { x: 200, y: 210, w: 400, tailX: 130 },  // girl3
+    ];
+    talk(root, STORY.grayLines.map((line, k) => ({ ...line, ...spots[k % spots.length] })))
+      .then(() => bottomButton(root, STORY.grayNext, () => go('meadow')));
+  },
+
+  /* ---------- 6. AREA 1: MUSHROOM MEADOW (fairy 1) ---------- */
+  meadow(root) {
+    const coral = MOONBOW[0];
+    searchArea(root, {
+      fairy: 0,
+      title: STORY.meadowTitle,
+      back: fairySky('mSky', 41),
+      front: GROUND + bush(300, 545, 0.9) + mushroom(470, 560, 1, 'fill="#d9534f"') +
+             mushroom(1140, 585, 1.5, 'fill="#9b6bd6"') + log(990, 612) +
+             grass(400, 640) + grass(660, 650) + grass(900, 660) + grass(1230, 640) +
+             flower(1250, 560, 0.8, 'fill="#F7C948"'),
+      // these little mushrooms and flowers turn coral when Coral is found
+      tints: mushroom(600, 605, 0.5, tint(0, coral)) + mushroom(700, 578, 0.42, tint(0, coral)) +
+             mushroom(850, 618, 0.55, tint(0, coral)) + flower(770, 600, 0.8, tint(0, coral)) +
+             flower(380, 590, 0.7, tint(0, coral)),
+      actors: girlsLeft(),
+      spots: [[470, 390], [990, 530], [1140, 340], [770, 470]],
+      fairyTo: [700, 300],
+      bubble: { x: 380, y: 56, w: 440, tailX: 300 },
+      lines: STORY.meadowLines,
+      nextLabel: STORY.meadowNext,
+      next: 'garden',
+    });
+  },
+
+  /* ---------- 7. AREA 2: FLOWER GARDEN (fairy 2) ---------- */
+  garden(root) {
+    const pearl = MOONBOW[1];
+    const tulips = ['#E86A92', '#F7C948', '#d9534f', '#B07BE0', '#E86A92', '#F29E7A', '#F7C948', '#d9534f', '#B07BE0'];
+    searchArea(root, {
+      fairy: 1,
+      title: STORY.gardenTitle,
+      back: fairySky('gdSky', 77, '#463a86', '#e3b3d9'),
+      front: GROUND + bush(420, 545, 1) + bush(640, 535, 0.9, '#3a9467') + bush(830, 545, 1) +
+             tulips.map((c, k) => tulip(440 + k * 55, 625 + (k % 2) * 12, 1, c)).join('') +
+             flower(1010, 600, 2.6, 'fill="#F7C948"', '#7a4a2e') +   // the biggest flower!
+             flower(1170, 610, 1.2, 'fill="#E86A92"') + grass(1240, 650) + grass(380, 660),
+      // white daisies that light up when the second fairy is found
+      tints: [[480, 590], [580, 575], [700, 595], [800, 578], [890, 592]]
+               .map(([x, y]) => flower(x, y, 0.7, tint(1, pearl))).join(''),
+      actors: girlsLeft() + placeFairy(0, 360, 400, 0.8),   // Coral follows the girls
+      spots: [[420, 470], [700, 480], [1010, 430], [1185, 545]],
+      hintSpot: 2,   // the big flower — Coral's hint — finds her right away
+      fairyTo: [660, 290],
+      bubble: { x: 360, y: 56, w: 440, tailX: 286 },
+      lines: STORY.gardenLines,
+      nextLabel: STORY.gardenNext,
+      next: 'powers',
+    });
+  },
+
+  /* ---------- 8. WE HAVE POWERS! (coming in build step 4) ---------- */
+  powers(root) {
     root.innerHTML = `
       <svg class="bg" viewBox="0 0 1280 720" aria-hidden="true">
-        <defs><linearGradient id="gSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a9a9b0"/><stop offset="1" stop-color="#e2e2e6"/></linearGradient></defs>
-        <rect width="1280" height="720" fill="url(#gSky)"/>
-        <path d="M0 360 Q200 300 400 350 T800 340 T1280 330 L1280 560 L0 560 Z" fill="#b9b9c0"/>
-        <path d="M0 540 Q320 500 640 528 T1280 520 L1280 720 L0 720 Z" fill="#c4c4ca" stroke="#1d1838" stroke-width="4"/>
-        ${place('girl1', {}, 160, 560, 0.6)}${place('girl2', {}, 260, 560, 0.6)}${place('girl3', {}, 360, 560, 0.6)}
+        <defs><radialGradient id="pwBurst" cx="0.5" cy="0.55" r="0.6"><stop offset="0" stop-color="#4a3f8a"/><stop offset="1" stop-color="#151236"/></radialGradient></defs>
+        <rect width="1280" height="720" fill="url(#pwBurst)"/>
+        ${starsSVG(50, 5, 720)}
+        ${placeFairy(0, 520, 200, 1.2, 0)}${placeFairy(1, 760, 200, 1.2, 0.6)}
       </svg>`;
     const card = el('div', 'card', root);
-    card.style.cssText = 'top:200px;width:700px;background:rgba(29,24,56,.85)';
-    card.innerHTML = 'Fairy World has lost its colors!<br><span style="font-size:24px;opacity:.8">(The next part of the adventure is coming soon.)</span>';
+    card.style.cssText = 'top:340px;width:700px';
+    card.innerHTML = 'We Have Powers!<br><span style="font-size:24px;opacity:.8">(The next part of the adventure is coming soon.)</span>';
     bottomButton(root, 'Back to the start', () => go('title'));
   },
 };
