@@ -392,6 +392,10 @@ const STORY = {
     'Now all five of us are home. Look up at the sky!',
   ],
   cloudNext: 'See the moonbow &#9656;',
+
+  finaleTitle: 'The Moonbow Returns!',
+  finaleCard: "All five fairies are home. Up above, Mom's star shines brighter than ever.",
+  playAgain: 'Play again',
 };
 
 /* The moonbow's 5 colors, outside to inside. One per fairy. */
@@ -504,6 +508,10 @@ const Sound = {
       case 'hmm':     this.note(392, 0, 0.2, { vol: 0.08 }); this.note(330, 0.2, 0.32, { vol: 0.08 }); break;
       case 'poof':    this.noise(0, 0.35, { from: 3200, to: 500, vol: 0.13 }); this.note(880, 0, 0.25, { to: 1760, vol: 0.06 }); break;
       case 'lift':    this.note(196, 0, 0.9, { type: 'triangle', to: 523, vol: 0.09 }); break;
+      case 'fanfare': // a little "ta-da" for the ending
+        [[523, 0], [659, 0.16], [784, 0.32]].forEach(([f, t]) => this.note(f, t, 0.3, { type: 'triangle', vol: 0.1 }));
+        [1047, 784, 659].forEach(f => this.note(f, 0.5, 1.4, { type: 'triangle', vol: 0.07 }));
+        break;
     }
   },
 };
@@ -1863,19 +1871,58 @@ const SCREENS = {
     });
   },
 
-  /* ---------- 12. THE MOONBOW RETURNS (coming in build step 5) ---------- */
+  /* ---------- 12. THE MOONBOW RETURNS ---------- */
   finale(root) {
+    Save.data.found = MOONBOW.length;
+    Save.write();
+    // Mom's star: little rays around it that spin slowly once it brightens
+    const rays = [...Array(8)].map((_, k) =>
+      `<path d="M0 -44 L0 -70" stroke="#fff6c9" stroke-width="5" stroke-linecap="round" transform="rotate(${k * 45})"/>`).join('');
     root.innerHTML = `
       <svg class="bg" viewBox="0 0 1280 720" aria-hidden="true">
         <defs><linearGradient id="fnSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#151236"/><stop offset="1" stop-color="#4a3f8a"/></linearGradient></defs>
         <rect width="1280" height="720" fill="url(#fnSky)"/>
-        ${starsSVG(50, 3, 500)}
+        ${starsSVG(70, 3, 520)}
         ${moonbowArc(640, 560, 490, 440, 26)}
+        <circle id="momGlow" cx="640" cy="78" r="60" fill="url(#starGlow)"/>
+        <g transform="translate(640,78)"><g id="momRays" class="spin" opacity="0" style="animation-duration:14s">${rays}</g></g>
+        <polygon id="momStar" points="${starPoints(640, 78, 24, 10)}" fill="#fff6c9"/>
+        <path d="M0 560 Q320 520 640 548 T1280 540 L1280 720 L0 720 Z" fill="#2e9a6f" stroke="#1d1838" stroke-width="4"/>
+        <rect class="s" x="1140" y="330" width="34" height="220" fill="#6b4027"/>
+        <circle class="s" cx="1156" cy="300" r="90" fill="#2e9a6f"/>
+        <path class="s n" d="M60 556 L60 500 M100 552 L100 488 M1220 548 L1220 498"/>
+        <circle class="s" cx="60" cy="490" r="14" fill="#E86A92"/><circle class="s" cx="100" cy="478" r="14" fill="#F7C948"/><circle class="s" cx="1220" cy="488" r="14" fill="#B07BE0"/>
+        ${placeFairy(0, 175, 330, 1.1, 0)}
+        ${placeFairy(1, 295, 210, 1.1, 0.5)}
+        ${placeFairy(2, 985, 210, 1.1, 1)}
+        ${placeFairy(3, 1105, 330, 1.1, 1.5)}
+        ${placeFairy(4, 880, 360, 1.1, 0.8)}
+        ${place('girl1', { pose: 'up', mouth: 'grin' }, 455, 592, 0.6)}
+        ${place('girl2', { pose: 'up', mouth: 'grin' }, 545, 592, 0.6)}
+        ${place('girl3', { pose: 'up', mouth: 'grin' }, 635, 592, 0.6)}
+        ${place('keeper', { pose: 'power' }, 750, 592, 0.6)}
       </svg>`;
-    const card = el('div', 'card', root);
-    card.style.cssText = 'top:300px;width:700px;background:rgba(29,24,56,.85)';
-    card.innerHTML = 'The Moonbow Returns!<br><span style="font-size:24px;opacity:.8">(The ending is coming soon.)</span>';
-    bottomButton(root, 'Back to the start', () => go('title'));
+    sceneTitle(root, STORY.finaleTitle);
+
+    (async () => {
+      confetti(120);
+      Sound.play('fanfare');
+      await wait(900);
+      // Mom's star shines brighter than ever
+      const glow = $('#momGlow', root), star = $('#momStar', root), rayG = $('#momRays', root);
+      Sound.play('sparkle');
+      await tween(1600, t => {
+        glow.setAttribute('r', (60 + 110 * t).toFixed(1));
+        star.setAttribute('points', starPoints(640, 78, 24 + 12 * t, 10 + 5 * t));
+        rayG.setAttribute('opacity', t.toFixed(2));
+      });
+      glow.classList.add('pulse');
+      const card = el('div', 'card', root);
+      card.style.cssText = 'top:150px;width:520px;font-size:30px;padding:24px 34px;background:rgba(29,24,56,.55)';
+      card.textContent = fill(STORY.finaleCard);
+      await wait(1400);
+      bottomButton(root, STORY.playAgain, () => { Save.reset(); go('story'); });
+    })();
   },
 };
 
@@ -1920,8 +1967,50 @@ window.addEventListener('orientationchange', () => setTimeout(fit, 200));
 
 
 /* =========================================================
+   HOME SCREEN ICON — drawn here so everything stays in this one file.
+   iPad picks it up when you choose "Add to Home Screen".
+   ========================================================= */
+function makeHomeIcon() {
+  try {
+    const c = document.createElement('canvas');
+    c.width = c.height = 180;
+    const g = c.getContext('2d');
+    const sky = g.createLinearGradient(0, 0, 0, 180);
+    sky.addColorStop(0, '#151236'); sky.addColorStop(1, '#4a3f8a');
+    g.fillStyle = sky; g.fillRect(0, 0, 180, 180);
+    // the 5-color moonbow
+    MOONBOW.forEach((color, i) => {
+      g.beginPath();
+      g.arc(90, 150, 74 - i * 10, Math.PI, 2 * Math.PI);
+      g.strokeStyle = color; g.lineWidth = 10; g.stroke();
+    });
+    // Mom's star
+    g.shadowColor = '#fff6c9'; g.shadowBlur = 18;
+    g.beginPath();
+    starPoints(90, 52, 20, 8.5).split(' ').forEach((p, k) => {
+      const [x, y] = p.split(',').map(Number);
+      k ? g.lineTo(x, y) : g.moveTo(x, y);
+    });
+    g.closePath(); g.fillStyle = '#fff6c9'; g.fill();
+    g.shadowBlur = 0;
+    // green hill
+    g.fillStyle = '#2e9a6f';
+    g.beginPath(); g.ellipse(90, 182, 130, 34, 0, 0, Math.PI * 2); g.fill();
+    const url = c.toDataURL('image/png');
+    [['apple-touch-icon', ''], ['icon', 'image/png']].forEach(([rel, type]) => {
+      const link = document.createElement('link');
+      link.rel = rel; link.href = url;
+      if (type) link.type = type;
+      document.head.appendChild(link);
+    });
+  } catch (e) { /* no icon is fine */ }
+}
+
+
+/* =========================================================
    START
    ========================================================= */
+makeHomeIcon();
 Save.load();
 drawMuteIcon();
 fit();
